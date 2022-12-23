@@ -3,9 +3,11 @@ module discord-bot-dashboard-backend-go
 go 1.19
 
 require (
-	github.com/gin-contrib/location v0.0.2
+	github.com/bwmarrin/discordgo v0.26.1
 	github.com/gin-gonic/gin v1.8.1
 )
+
+require github.com/gorilla/websocket v1.4.2 // indirect
 
 require (
 	github.com/gin-contrib/cors v1.4.0

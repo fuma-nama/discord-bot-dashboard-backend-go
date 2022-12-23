@@ -8,29 +8,40 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
 func main() {
+	botConfig := discord.BotConfig{
+		Token: os.Getenv("bot_token"),
+	}
 	dbConfig := database.DataBaseConfig{
 		Host:     os.Getenv("db_host"),
 		Name:     os.Getenv("db_name"),
 		User:     os.Getenv("db_username"),
 		Password: os.Getenv("db_password"),
 	}
-
-	auth := discord.OAuth2Config{
+	authConfig := discord.OAuth2Config{
 		ClientId:     os.Getenv("client_id"),
 		ClientSecret: os.Getenv("client_secret"),
 		RedirectUrl:  os.Getenv("redirect_url"),
+	}
+	corsConfig := cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{"GET", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"},
+		AllowHeaders:     []string{"Origin", "Content-Type"},
+		AllowCredentials: true,
 	}
 
 	scope := "identify guilds"
 
 	db := database.Start(dbConfig)
+	bot := discord.NewBot(botConfig, db)
 	router := gin.New()
+
 	router.Use(gin.Logger())
-	router.Use(CORS())
+	router.Use(CORS(corsConfig))
 
 	router.GET("/ping", func(c *gin.Context) {
 
@@ -39,24 +50,19 @@ func main() {
 		})
 	})
 
-	controllers.AuthController(auth, scope, router)
-	controllers.GuildController(router, db)
+	controllers.AuthController(authConfig, scope, router)
+	controllers.GuildController(router, bot, db)
 
 	if router.Run(":8080") != nil {
 		return
 	}
 }
 
-func CORS() gin.HandlerFunc {
-	config := cors.Config{
-		AllowOrigins: []string{"http://localhost:3000"},
-		AllowMethods: []string{"GET", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"},
-		AllowHeaders: []string{"Origin", "Content-Type"},
-	}
+func CORS(config cors.Config) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(config.AllowOrigins, ", "))
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", strconv.FormatBool(config.AllowCredentials))
 		c.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join(config.AllowHeaders, ", "))
 		c.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join(config.AllowMethods, ", "))
 
