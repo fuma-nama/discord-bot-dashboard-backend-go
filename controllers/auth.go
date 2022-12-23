@@ -29,9 +29,9 @@ func AuthController(auth discord.OAuth2Config, scope string, router *gin.Engine)
 	})
 
 	router.GET("/callback", func(c *gin.Context) {
-		println("Handle callback")
-
 		code := c.Query("code")
+
+		println("Handle callback", code)
 
 		if code == "" {
 			c.AbortWithStatus(http.StatusBadRequest)
@@ -40,6 +40,8 @@ func AuthController(auth discord.OAuth2Config, scope string, router *gin.Engine)
 		data, err := discord.GetToken(auth, code)
 
 		if err != nil {
+			println("Failed get token")
+
 			c.AbortWithStatus(http.StatusInternalServerError)
 		}
 
@@ -47,7 +49,7 @@ func AuthController(auth discord.OAuth2Config, scope string, router *gin.Engine)
 
 		c.SetCookie("access-token", data.AccessToken, data.ExpiresIn, "/", "", false, true)
 
-		c.Redirect(http.StatusOK, auth.RedirectUrl)
+		c.Redirect(http.StatusMovedPermanently, auth.RedirectUrl)
 	})
 
 	router.GET("/auth", func(c *gin.Context) {

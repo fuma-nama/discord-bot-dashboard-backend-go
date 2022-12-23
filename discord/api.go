@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 type TokenResponse struct {
@@ -34,15 +35,15 @@ func CheckToken(accessToken string) bool {
 }
 
 func GetToken(options OAuth2Config, code string) (*TokenResponse, error) {
-	body, _ := json.Marshal(map[string]string{
-		"client_id":     options.ClientId,
-		"client_secret": options.ClientSecret,
-		"grant_type":    "authorization_code",
-		"code":          code,
-		"redirect_uri":  options.RedirectUrl,
-	})
+	body := url.Values{
+		"client_id":     {options.ClientId},
+		"client_secret": {options.ClientSecret},
+		"grant_type":    {"authorization_code"},
+		"code":          {code},
+		"redirect_uri":  {"http://localhost:8080/callback"},
+	}
 
-	res, err := http.Post("https://discord.com/api/oauth2/token", "application/x-www-form-urlencoded", bytes.NewBuffer(body))
+	res, err := http.Post(endpoint+"/oauth2/token", "application/x-www-form-urlencoded", bytes.NewBuffer([]byte(body.Encode())))
 	if err != nil {
 		return nil, err
 	}
