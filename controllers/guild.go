@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"discord-bot-dashboard-backend-go/jwt"
 	"discord-bot-dashboard-backend-go/models"
 	"errors"
 	"github.com/bwmarrin/discordgo"
@@ -20,7 +21,7 @@ type WelcomeMessageOptions struct {
 	Message *string `json:"message"`
 }
 
-func GuildController(router *gin.Engine, bot *discordgo.Session, db *gorm.DB) {
+func GuildController(router *gin.RouterGroup, bot *discordgo.Session, db *gorm.DB) {
 	router.GET("/guilds/:guild", func(c *gin.Context) {
 		guild, err := guildAndCheck(bot, c)
 		if err != nil {
@@ -165,15 +166,28 @@ func guild(c *gin.Context) (*string, error) {
 	return &guild, nil
 }
 
-func guildAndCheck(bot *discordgo.Session, c *gin.Context) (*string, error) {
+func guildAndCheck(bot *discordgo.Session, c *gin.Context) (id *string, err error) {
 	guild, err := guild(c)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	if guildData, err := bot.Guild(*guild); guildData == nil || err != nil {
+	guildData, err := bot.Guild(*guild)
+	if err != nil {
 		c.JSON(http.StatusNotFound, nil)
-		return nil, errors.New("guild not found")
+		return
+	}
+
+	principal := jwt.Principal(c)
+	member, err := bot.GuildMember(*guild, principal.UserID)
+	if err != nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	if member.Permissions&8 == 0 && member.User.ID != guildData.OwnerID {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return nil, errors.New("member missing permissions")
 	}
 
 	return guild, nil
