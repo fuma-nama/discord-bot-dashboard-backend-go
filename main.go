@@ -1,12 +1,14 @@
 package main
 
 import (
+	"discord-bot-dashboard-backend-go/controllers"
 	"discord-bot-dashboard-backend-go/db"
 	"discord-bot-dashboard-backend-go/discord"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"net/url"
 	"os"
+	"time"
 )
 
 func main() {
@@ -28,6 +30,13 @@ func main() {
 	db.Start(dbConfig)
 	router := gin.New()
 	router.Use(gin.Logger())
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{"GET", "OPTIONS", "POST", "PUT", "PATCH"},
+		AllowHeaders:     []string{"Origin", "Content-Type"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	router.GET("/ping", func(c *gin.Context) {
 
@@ -36,42 +45,9 @@ func main() {
 		})
 	})
 
-	router.GET("/login", func(c *gin.Context) {
-		c.Redirect(http.StatusOK, "https://discord.com/oauth2/authorize?response_type=code&client_id="+url.QueryEscape(auth.ClientId)+"&scope="+url.QueryEscape(scope))
-	})
+	controllers.AuthController(auth, scope, router)
 
-	router.GET("/callback", func(c *gin.Context) {
-		code := c.Query("code")
-
-		if code == "" {
-			c.AbortWithStatus(http.StatusBadRequest)
-		}
-
-		data, err := discord.GetToken(auth, code)
-
-		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
-		}
-
-		c.SetCookie("access-token", data.AccessToken, data.ExpiresIn, "/", "", false, true)
-
-		c.Redirect(http.StatusOK, auth.RedirectUrl)
-	})
-
-	router.GET("/auth", func(c *gin.Context) {
-		token, err := c.Cookie("access-token")
-		if err != nil {
-			c.AbortWithStatus(http.StatusUnauthorized)
-		}
-
-		if discord.CheckToken(token) {
-			c.JSON(http.StatusOK, token)
-		} else {
-			c.JSON(http.StatusUnauthorized, "Invalid token")
-		}
-	})
-
-	if router.Run() != nil {
+	if router.Run(":8080") != nil {
 		return
 	}
 }
