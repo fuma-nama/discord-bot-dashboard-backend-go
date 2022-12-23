@@ -1,4 +1,4 @@
-package db
+package database
 
 import (
 	"discord-bot-dashboard-backend-go/models"

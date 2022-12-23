@@ -1,10 +1,6 @@
 package models
 
-import (
-	"gorm.io/gorm"
-)
-
 type Guild struct {
-	gorm.Model
-	Id uint `gorm:"primaryKey"`
+	Id             string  `gorm:"primaryKey"`
+	WelcomeMessage *string `gorm:"default: null"`
 }
