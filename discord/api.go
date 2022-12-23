@@ -3,6 +3,7 @@ package discord
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -34,21 +35,27 @@ func CheckToken(accessToken string) bool {
 	return err == nil && res.StatusCode == 200
 }
 
-func GetToken(options OAuth2Config, code string) (*TokenResponse, error) {
+func GetToken(options OAuth2Config, callbackUrl string, code string) (*TokenResponse, error) {
 	body := url.Values{
 		"client_id":     {options.ClientId},
 		"client_secret": {options.ClientSecret},
 		"grant_type":    {"authorization_code"},
 		"code":          {code},
-		"redirect_uri":  {"http://localhost:8080/callback"},
+		"redirect_uri":  {callbackUrl},
 	}
 
 	res, err := http.Post(endpoint+"/oauth2/token", "application/x-www-form-urlencoded", bytes.NewBuffer([]byte(body.Encode())))
+
 	if err != nil {
 		return nil, err
 	}
 
+	if res.StatusCode != 200 {
+		return nil, errors.New("failed to exchange token")
+	}
+
 	raw, err := io.ReadAll(res.Body)
+
 	if err != nil {
 		return nil, err
 	}
@@ -57,4 +64,20 @@ func GetToken(options OAuth2Config, code string) (*TokenResponse, error) {
 	err = json.Unmarshal(raw, &data)
 
 	return &data, err
+}
+
+func RevokeToken(options OAuth2Config, accessToken string) error {
+	body := url.Values{
+		"client_id":     {options.ClientId},
+		"client_secret": {options.ClientSecret},
+		"token":         {accessToken},
+	}
+
+	res, err := http.Post("https://discord.com/api/oauth2/token/revoke", "application/x-www-form-urlencoded", bytes.NewBuffer([]byte(body.Encode())))
+
+	if err != nil || res.StatusCode != 200 {
+		return errors.New("failed to revoke token")
+	}
+
+	return nil
 }
