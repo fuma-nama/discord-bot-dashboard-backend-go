@@ -4,6 +4,7 @@ import (
 	"discord-bot-dashboard-backend-go/controllers"
 	"discord-bot-dashboard-backend-go/database"
 	"discord-bot-dashboard-backend-go/discord"
+	"discord-bot-dashboard-backend-go/jwt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -13,6 +14,9 @@ import (
 )
 
 func main() {
+	jwtConfig := jwt.Config{
+		Secret: os.Getenv("jwt_secret"),
+	}
 	botConfig := discord.BotConfig{
 		Token: os.Getenv("bot_token"),
 	}
@@ -26,6 +30,7 @@ func main() {
 		ClientId:     os.Getenv("client_id"),
 		ClientSecret: os.Getenv("client_secret"),
 		RedirectUrl:  os.Getenv("redirect_url"),
+		Scope:        "identify guilds guilds.members.read",
 	}
 	corsConfig := cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"},
@@ -33,8 +38,6 @@ func main() {
 		AllowHeaders:     []string{"Origin", "Content-Type"},
 		AllowCredentials: true,
 	}
-
-	scope := "identify guilds"
 
 	db := database.Start(dbConfig)
 	bot := discord.NewBot(botConfig, db)
@@ -50,8 +53,12 @@ func main() {
 		})
 	})
 
-	controllers.AuthController(authConfig, scope, router)
-	controllers.GuildController(router, bot, db)
+	controllers.AuthController(jwtConfig, authConfig, &router.RouterGroup)
+	auth := router.Group("")
+	{
+		auth.Use(jwt.AuthMiddleware(jwtConfig))
+		controllers.GuildController(auth, bot, db)
+	}
 
 	if router.Run(":8080") != nil {
 		return

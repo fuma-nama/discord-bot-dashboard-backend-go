@@ -2,19 +2,18 @@ package controllers
 
 import (
 	"discord-bot-dashboard-backend-go/discord"
+	"discord-bot-dashboard-backend-go/jwt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/url"
 )
 
-var tokenCookie = "access-token"
-
-func AuthController(auth discord.OAuth2Config, scope string, router *gin.Engine) {
+func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin.RouterGroup) {
 
 	router.GET("/login", func(c *gin.Context) {
 		params := url.Values{
 			"client_id":     {auth.ClientId},
-			"scope":         {scope},
+			"scope":         {auth.Scope},
 			"response_type": {"code"},
 			"redirect_uri":  {getCallbackUrl(c)},
 		}
@@ -27,55 +26,57 @@ func AuthController(auth discord.OAuth2Config, scope string, router *gin.Engine)
 		code := c.Query("code")
 
 		if code == "" {
-			c.AbortWithStatus(http.StatusBadRequest)
+			c.Redirect(http.StatusMovedPermanently, auth.RedirectUrl)
+			c.Abort()
 			return
 		}
 
-		data, err := discord.GetToken(auth, getCallbackUrl(c), code)
-
+		tokenData, err := discord.GetToken(auth, getCallbackUrl(c), code)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.SetCookie(tokenCookie, data.AccessToken, data.ExpiresIn, "/", "", false, true)
+		user, err := discord.GetUser(tokenData.AccessToken)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		jwtToken, err := jwt.GenerateToken(jwtConfig, tokenData.AccessToken, user.Id, tokenData.ExpiresIn)
+
+		c.SetCookie(jwt.PrincipalCookie, jwtToken, tokenData.ExpiresIn, "/", "", false, true)
 		c.Redirect(http.StatusMovedPermanently, auth.RedirectUrl)
 		c.Abort()
 	})
 
-	router.GET("/auth", func(c *gin.Context) {
-		token, err := c.Cookie(tokenCookie)
-		if err != nil || token == "" {
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
+	router.GET("/auth", jwt.AuthMiddleware(jwtConfig), func(c *gin.Context) {
+		principal := jwt.Principal(c)
 
-		if discord.CheckToken(token) {
-			c.JSON(http.StatusOK, token)
+		if discord.CheckToken(principal.AccessToken) {
+			c.JSON(http.StatusOK, principal.AccessToken)
 		} else {
+			invalidateSession(c)
 			c.JSON(http.StatusUnauthorized, "Invalid token")
 		}
 	})
 
-	router.POST("/auth/signout", func(c *gin.Context) {
-		token, err := c.Cookie(tokenCookie)
-		if err != nil || token == "" {
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
+	router.POST("/auth/signout", jwt.AuthMiddleware(jwtConfig), func(c *gin.Context) {
+		principal := jwt.Principal(c)
+		_ = discord.RevokeToken(auth, principal.AccessToken)
 
-		if err := discord.RevokeToken(auth, token); err != nil {
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
+		invalidateSession(c)
+		c.AbortWithStatus(http.StatusOK)
+	})
+}
 
-		http.SetCookie(c.Writer, &http.Cookie{
-			Name:     "access-token",
-			Value:    "",
-			Path:     "/",
-			MaxAge:   0,
-			HttpOnly: true,
-		})
+func invalidateSession(c *gin.Context) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     jwt.PrincipalCookie,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   0,
+		HttpOnly: true,
 	})
 }
 
