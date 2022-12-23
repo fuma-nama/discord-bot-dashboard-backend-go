@@ -14,22 +14,26 @@ type TokenResponse struct {
 	ExpiresIn   int    `json:"expires_in"`
 }
 
+type User struct {
+	Id string `json:"id"`
+}
+
 type OAuth2Config struct {
 	ClientId     string
 	ClientSecret string
 	RedirectUrl  string
+	Scope        string
 }
 
 var endpoint = "https://discord.com/api/v10"
 var client = &http.Client{}
 
 func CheckToken(accessToken string) bool {
-	req, err := http.NewRequest("HEAD", endpoint+"/oauth2/@me", nil)
+	req, err := request("HEAD", "/oauth2/@me", accessToken)
 	if err != nil {
 		return false
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", "Bearer "+accessToken)
 	res, err := client.Do(req)
 
 	return err == nil && res.StatusCode == 200
@@ -80,4 +84,36 @@ func RevokeToken(options OAuth2Config, accessToken string) error {
 	}
 
 	return nil
+}
+
+func GetUser(accessToken string) (user *User, err error) {
+	req, err := request("GET", "/users/@me", accessToken)
+	if err != nil {
+		return
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return
+	}
+
+	raw, err := io.ReadAll(res.Body)
+	if err != nil {
+		return
+	}
+
+	var data User
+	err = json.Unmarshal(raw, &data)
+
+	return &data, nil
+}
+
+func request(method, url string, accessToken string) (*http.Request, error) {
+	req, err := http.NewRequest(method, endpoint+url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	return req, nil
 }
