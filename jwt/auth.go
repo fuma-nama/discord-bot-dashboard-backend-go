@@ -72,6 +72,7 @@ func InvalidateSession(c *gin.Context) {
 		Name:   PrincipalCookie,
 		Value:  "",
 		Path:   "/",
+		Domain: "sonmoosans-discord-bot-dashboard.up.railway.app",
 		MaxAge: 0,
 	})
 }
