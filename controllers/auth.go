@@ -15,7 +15,7 @@ func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin
 		if discord.CheckToken(principal.AccessToken) {
 			c.JSON(http.StatusOK, principal.AccessToken)
 		} else {
-			invalidateSession(c)
+			jwt.InvalidateSession(c)
 			c.JSON(http.StatusUnauthorized, "Invalid token")
 		}
 	})
@@ -49,7 +49,14 @@ func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin
 
 			jwtToken, err := jwt.GenerateToken(jwtConfig, tokenData.AccessToken, user.Id, tokenData.ExpiresIn)
 
-			c.SetCookie(jwt.PrincipalCookie, jwtToken, tokenData.ExpiresIn, "/", "", false, true)
+			http.SetCookie(c.Writer, &http.Cookie{
+				Name:     jwt.PrincipalCookie,
+				Value:    url.QueryEscape(jwtToken),
+				MaxAge:   tokenData.ExpiresIn,
+				Path:     "/",
+				SameSite: http.SameSiteStrictMode,
+				HttpOnly: true,
+			})
 		}
 
 		c.Redirect(http.StatusFound, auth.ClientUrl)
@@ -60,17 +67,7 @@ func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin
 		principal := jwt.Principal(c)
 		_ = discord.RevokeToken(auth, principal.AccessToken)
 
-		invalidateSession(c)
+		jwt.InvalidateSession(c)
 		c.AbortWithStatus(http.StatusOK)
-	})
-}
-
-func invalidateSession(c *gin.Context) {
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     jwt.PrincipalCookie,
-		Value:    "",
-		Path:     "/",
-		MaxAge:   0,
-		HttpOnly: true,
 	})
 }

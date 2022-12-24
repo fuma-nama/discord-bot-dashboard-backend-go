@@ -28,15 +28,24 @@ func Principal(c *gin.Context) AuthPrincipal {
 
 func AuthMiddleware(config Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		rawToken := ExtractToken(c)
+
+		if rawToken == "" {
+			c.String(http.StatusUnauthorized, "Unauthorized")
+			c.Abort()
+			return
+		}
+
 		token, err := jwt.Parse(ExtractToken(c), func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 			return []byte(config.Secret), nil
 		})
 
 		if err != nil {
-			c.String(http.StatusUnauthorized, "Unauthorized")
+			InvalidateSession(c)
+			c.String(http.StatusUnauthorized, err.Error())
 			c.Abort()
 			return
 		}
@@ -52,8 +61,20 @@ func AuthMiddleware(config Config) gin.HandlerFunc {
 
 			c.Next()
 		} else {
+			InvalidateSession(c)
 			c.String(http.StatusUnauthorized, "Invalid token")
 			c.Abort()
 		}
 	}
+}
+
+func InvalidateSession(c *gin.Context) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     PrincipalCookie,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   0,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	})
 }
