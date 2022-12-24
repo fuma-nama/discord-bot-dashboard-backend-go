@@ -54,8 +54,9 @@ func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin
 				Value:    url.QueryEscape(jwtToken),
 				MaxAge:   tokenData.ExpiresIn,
 				Path:     "/",
+				SameSite: http.SameSiteLaxMode,
 				HttpOnly: true,
-				Secure:   false,
+				Secure:   true,
 			})
 		}
 
