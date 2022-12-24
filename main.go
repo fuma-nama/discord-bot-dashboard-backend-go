@@ -46,6 +46,9 @@ func main() {
 
 	router.Use(gin.Logger())
 	router.Use(CORS(corsConfig))
+	if err := router.SetTrustedProxies(nil); err != nil {
+		panic("Failed to setup engine")
+	}
 
 	router.GET("/ping", func(c *gin.Context) {
 

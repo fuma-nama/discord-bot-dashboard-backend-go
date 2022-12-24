@@ -9,6 +9,16 @@ import (
 )
 
 func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin.RouterGroup) {
+	router.GET("/auth", jwt.AuthMiddleware(jwtConfig), func(c *gin.Context) {
+		principal := jwt.Principal(c)
+
+		if discord.CheckToken(principal.AccessToken) {
+			c.JSON(http.StatusOK, principal.AccessToken)
+		} else {
+			invalidateSession(c)
+			c.JSON(http.StatusUnauthorized, "Invalid token")
+		}
+	})
 
 	router.GET("/login", func(c *gin.Context) {
 		params := url.Values{
@@ -18,7 +28,7 @@ func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin
 			"redirect_uri":  {getCallbackUrl(c)},
 		}
 
-		c.Redirect(http.StatusMovedPermanently, "https://discord.com/oauth2/authorize?"+params.Encode())
+		c.Redirect(http.StatusFound, "https://discord.com/oauth2/authorize?"+params.Encode())
 		c.Abort()
 	})
 
@@ -26,7 +36,7 @@ func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin
 		code := c.Query("code")
 
 		if code == "" {
-			c.Redirect(http.StatusMovedPermanently, auth.RedirectUrl)
+			c.Redirect(http.StatusFound, auth.RedirectUrl)
 			c.Abort()
 			return
 		}
@@ -48,17 +58,6 @@ func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin
 		c.SetCookie(jwt.PrincipalCookie, jwtToken, tokenData.ExpiresIn, "/", "", false, true)
 		c.Redirect(http.StatusMovedPermanently, auth.RedirectUrl)
 		c.Abort()
-	})
-
-	router.GET("/auth", jwt.AuthMiddleware(jwtConfig), func(c *gin.Context) {
-		principal := jwt.Principal(c)
-
-		if discord.CheckToken(principal.AccessToken) {
-			c.JSON(http.StatusOK, principal.AccessToken)
-		} else {
-			invalidateSession(c)
-			c.JSON(http.StatusUnauthorized, "Invalid token")
-		}
 	})
 
 	router.POST("/auth/signout", jwt.AuthMiddleware(jwtConfig), func(c *gin.Context) {
