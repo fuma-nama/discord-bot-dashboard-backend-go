@@ -28,14 +28,12 @@ func GuildController(router *gin.RouterGroup, bot *discordgo.Session, db *gorm.D
 			return
 		}
 
-		var info *models.Guild
-		if err := db.Model(&models.Guild{}).Find(&info, guild).Error; err != nil {
-			info = nil
-		}
+		var info models.Guild
+		db.Find(&info, guild.ID)
 
 		features := make([]string, 0)
 
-		if info != nil && info.WelcomeMessage != nil {
+		if info.Id != "" && info.WelcomeMessage != nil {
 			features = append(features, "welcome-message")
 		}
 
@@ -46,22 +44,32 @@ func GuildController(router *gin.RouterGroup, bot *discordgo.Session, db *gorm.D
 	})
 
 	router.GET("/guilds/:guild/roles", func(c *gin.Context) {
-		guild, err := guildInfo(bot, c)
+		guild, err := guild(c)
 		if err != nil {
 			return
 		}
 
-		roles, _ := bot.GuildRoles(guild.ID)
+		roles, err := bot.GuildRoles(*guild)
+		if err != nil {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+
 		c.JSON(http.StatusOK, roles)
 	})
 
 	router.GET("/guilds/:guild/channels", func(c *gin.Context) {
-		guild, err := guildInfo(bot, c)
+		guild, err := guild(c)
 		if err != nil {
 			return
 		}
 
-		channels, _ := bot.GuildChannels(guild.ID)
+		channels, err := bot.GuildChannels(*guild)
+		if err != nil {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+
 		c.JSON(http.StatusOK, channels)
 	})
 
@@ -73,12 +81,10 @@ func GuildController(router *gin.RouterGroup, bot *discordgo.Session, db *gorm.D
 				return
 			}
 
-			var info *models.Guild
-			if err := db.Model(&models.Guild{}).Find(&info, guild).Error; err != nil {
-				info = nil
-			}
+			var info models.Guild
+			db.Find(&info, guild)
 
-			if info == nil || info.WelcomeMessage == nil {
+			if info.Id == "" || info.WelcomeMessage == nil {
 				c.AbortWithStatus(http.StatusNotFound)
 			} else {
 				c.JSON(http.StatusOK, WelcomeMessageOptions{
@@ -89,7 +95,7 @@ func GuildController(router *gin.RouterGroup, bot *discordgo.Session, db *gorm.D
 		})
 
 		group.PATCH("/welcome-message", func(c *gin.Context) {
-			guild, err := guild(c)
+			guild, err := guildAndCheck(bot, c)
 			if err != nil {
 				return
 			}
@@ -100,10 +106,19 @@ func GuildController(router *gin.RouterGroup, bot *discordgo.Session, db *gorm.D
 				return
 			}
 
+			if body.Channel != nil {
+				channels, err := bot.GuildChannels(guild.ID)
+
+				if err != nil || !containsChannel(channels, *body.Channel) {
+					c.AbortWithStatus(http.StatusBadRequest)
+					return
+				}
+			}
+
 			var updated models.Guild
 			err = db.Model(&updated).
 				Clauses(clause.Returning{}).
-				Where("id = ?", guild).
+				Where("id = ?", guild.ID).
 				Updates(models.Guild{WelcomeMessage: body.Message, WelcomeChannel: body.Channel}).
 				Error
 
@@ -166,7 +181,7 @@ func guild(c *gin.Context) (*string, error) {
 	return &guild, nil
 }
 
-func guildAndCheck(bot *discordgo.Session, c *gin.Context) (id *string, err error) {
+func guildAndCheck(bot *discordgo.Session, c *gin.Context) (id *discordgo.Guild, err error) {
 	guild, err := guild(c)
 	if err != nil {
 		return
@@ -190,19 +205,15 @@ func guildAndCheck(bot *discordgo.Session, c *gin.Context) (id *string, err erro
 		return nil, errors.New("member missing permissions")
 	}
 
-	return guild, nil
+	return guildData, nil
 }
 
-func guildInfo(bot *discordgo.Session, c *gin.Context) (result *discordgo.Guild, err error) {
-	guild, err := guild(c)
-	if err != nil {
-		return
+func containsChannel(s []*discordgo.Channel, channel string) bool {
+	for _, v := range s {
+		if v.ID == channel {
+			return true
+		}
 	}
 
-	result, err = bot.Guild(*guild)
-	if result == nil || err != nil {
-		c.JSON(http.StatusNotFound, nil)
-	}
-
-	return
+	return false
 }
