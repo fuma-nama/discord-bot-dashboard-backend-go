@@ -44,7 +44,6 @@ func AuthMiddleware(config Config) gin.HandlerFunc {
 		})
 
 		if err != nil {
-			InvalidateSession(c)
 			c.String(http.StatusUnauthorized, err.Error())
 			c.Abort()
 			return
@@ -70,11 +69,9 @@ func AuthMiddleware(config Config) gin.HandlerFunc {
 
 func InvalidateSession(c *gin.Context) {
 	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     PrincipalCookie,
-		Value:    "",
-		Path:     "/",
-		MaxAge:   0,
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+		Name:   PrincipalCookie,
+		Value:  "",
+		Path:   "/",
+		MaxAge: 0,
 	})
 }
