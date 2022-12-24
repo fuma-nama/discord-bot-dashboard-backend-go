@@ -6,15 +6,16 @@ import (
 	"gorm.io/gorm"
 )
 
-type DataBaseConfig struct {
+type Config struct {
 	Host     string
-	Name     string
 	User     string
 	Password string
+	Name     string
+	Port     string
 }
 
-func Start(config DataBaseConfig) *gorm.DB {
-	dsn := "host=" + config.Host + " user=" + config.User + " password=" + config.Password + " dbname=" + config.Name
+func Start(config Config) *gorm.DB {
+	dsn := "host=" + config.Host + " user=" + config.User + " password=" + config.Password + " dbname=" + config.Name + " port=" + config.Port
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {

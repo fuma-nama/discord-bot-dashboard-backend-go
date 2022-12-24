@@ -20,20 +20,21 @@ func main() {
 	botConfig := discord.BotConfig{
 		Token: os.Getenv("bot_token"),
 	}
-	dbConfig := database.DataBaseConfig{
+	dbConfig := database.Config{
 		Host:     os.Getenv("db_host"),
 		Name:     os.Getenv("db_name"),
-		User:     os.Getenv("db_username"),
+		User:     os.Getenv("db_user"),
 		Password: os.Getenv("db_password"),
+		Port:     os.Getenv("db_port"),
 	}
 	authConfig := discord.OAuth2Config{
 		ClientId:     os.Getenv("client_id"),
 		ClientSecret: os.Getenv("client_secret"),
 		RedirectUrl:  os.Getenv("redirect_url"),
-		Scope:        "identify guilds guilds.members.read",
+		Scope:        "identify guilds",
 	}
 	corsConfig := cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowOrigins:     []string{os.Getenv("client_url")},
 		AllowMethods:     []string{"GET", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Content-Type"},
 		AllowCredentials: true,
