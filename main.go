@@ -15,26 +15,27 @@ import (
 
 func main() {
 	jwtConfig := jwt.Config{
-		Secret: os.Getenv("jwt_secret"),
+		Secret: os.Getenv("JWT_SECRET"),
 	}
 	botConfig := discord.BotConfig{
-		Token: os.Getenv("bot_token"),
+		Token: os.Getenv("BOT_TOKEN"),
 	}
 	dbConfig := database.Config{
-		Host:     os.Getenv("db_host"),
-		Name:     os.Getenv("db_name"),
-		User:     os.Getenv("db_user"),
-		Password: os.Getenv("db_password"),
-		Port:     os.Getenv("db_port"),
+		Host:     os.Getenv("PGHOST"),
+		Name:     os.Getenv("PGDATABASE"),
+		User:     os.Getenv("PGUSER"),
+		Password: os.Getenv("PGPASSWORD"),
+		Port:     os.Getenv("PGPORT"),
 	}
 	authConfig := discord.OAuth2Config{
-		ClientId:     os.Getenv("client_id"),
-		ClientSecret: os.Getenv("client_secret"),
-		RedirectUrl:  os.Getenv("redirect_url"),
+		ClientId:     os.Getenv("CLIENT_ID"),
+		ClientSecret: os.Getenv("CLIENT_SECRET"),
+		RedirectUrl:  os.Getenv("API_ENDPOINT") + "/callback",
+		ClientUrl:    os.Getenv("REDIRECT_URL"),
 		Scope:        "identify guilds",
 	}
 	corsConfig := cors.Config{
-		AllowOrigins:     []string{os.Getenv("client_url")},
+		AllowOrigins:     []string{os.Getenv("CLIENT_URL")},
 		AllowMethods:     []string{"GET", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Content-Type"},
 		AllowCredentials: true,

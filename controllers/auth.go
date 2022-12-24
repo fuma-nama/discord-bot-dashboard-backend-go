@@ -25,7 +25,7 @@ func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin
 			"client_id":     {auth.ClientId},
 			"scope":         {auth.Scope},
 			"response_type": {"code"},
-			"redirect_uri":  {getCallbackUrl(c)},
+			"redirect_uri":  {auth.RedirectUrl},
 		}
 
 		c.Redirect(http.StatusFound, "https://discord.com/oauth2/authorize?"+params.Encode())
@@ -33,30 +33,26 @@ func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin
 	})
 
 	router.GET("/callback", func(c *gin.Context) {
-		code := c.Query("code")
 
-		if code == "" {
-			c.Redirect(http.StatusFound, auth.RedirectUrl)
-			c.Abort()
-			return
+		if code := c.Query("code"); code != "" {
+			tokenData, err := discord.GetToken(auth, auth.RedirectUrl, code)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			user, err := discord.GetUser(tokenData.AccessToken)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			jwtToken, err := jwt.GenerateToken(jwtConfig, tokenData.AccessToken, user.Id, tokenData.ExpiresIn)
+
+			c.SetCookie(jwt.PrincipalCookie, jwtToken, tokenData.ExpiresIn, "/", "", false, true)
 		}
 
-		tokenData, err := discord.GetToken(auth, getCallbackUrl(c), code)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		user, err := discord.GetUser(tokenData.AccessToken)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		jwtToken, err := jwt.GenerateToken(jwtConfig, tokenData.AccessToken, user.Id, tokenData.ExpiresIn)
-
-		c.SetCookie(jwt.PrincipalCookie, jwtToken, tokenData.ExpiresIn, "/", "", false, true)
-		c.Redirect(http.StatusMovedPermanently, auth.RedirectUrl)
+		c.Redirect(http.StatusFound, auth.ClientUrl)
 		c.Abort()
 	})
 
@@ -77,13 +73,4 @@ func invalidateSession(c *gin.Context) {
 		MaxAge:   0,
 		HttpOnly: true,
 	})
-}
-
-func getCallbackUrl(c *gin.Context) string {
-	scheme := "http://"
-	if c.Request.TLS != nil {
-		scheme = "https://"
-	}
-
-	return scheme + c.Request.Host + "/callback"
 }

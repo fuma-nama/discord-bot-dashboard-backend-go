@@ -21,8 +21,11 @@ type User struct {
 type OAuth2Config struct {
 	ClientId     string
 	ClientSecret string
-	RedirectUrl  string
-	Scope        string
+	//The API Endpoint url (such as https://api.mybot.com/callback)
+	RedirectUrl string
+	Scope       string
+	//Client side url (such as https://myapp.vercel.app/callback
+	ClientUrl string
 }
 
 var endpoint = "https://discord.com/api/v10"
@@ -49,19 +52,18 @@ func GetToken(options OAuth2Config, callbackUrl string, code string) (*TokenResp
 	}
 
 	res, err := http.Post(endpoint+"/oauth2/token", "application/x-www-form-urlencoded", bytes.NewBuffer([]byte(body.Encode())))
-
 	if err != nil {
 		return nil, err
-	}
-
-	if res.StatusCode != 200 {
-		return nil, errors.New("failed to exchange token")
 	}
 
 	raw, err := io.ReadAll(res.Body)
 
 	if err != nil {
 		return nil, err
+	}
+
+	if res.StatusCode != 200 {
+		return nil, errors.New("failed to exchange token: " + string(raw))
 	}
 
 	var data TokenResponse
