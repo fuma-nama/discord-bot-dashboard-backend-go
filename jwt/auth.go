@@ -5,6 +5,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"net/url"
 )
 
 type AuthPrincipal struct {
@@ -67,14 +68,25 @@ func AuthMiddleware(config Config) gin.HandlerFunc {
 	}
 }
 
+func SetSession(c *gin.Context, token string, maxAge int) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     PrincipalCookie,
+		Value:    url.QueryEscape(token),
+		MaxAge:   maxAge,
+		Path:     "/",
+		SameSite: http.SameSiteNoneMode,
+		HttpOnly: false,
+		Secure:   true,
+	})
+}
+
 func InvalidateSession(c *gin.Context) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     PrincipalCookie,
 		Value:    "",
-		Path:     "/",
 		MaxAge:   0,
-		Domain:   "demo-discord-dashboard",
 		SameSite: http.SameSiteNoneMode,
+		Path:     "/",
 		HttpOnly: false,
 		Secure:   true,
 	})

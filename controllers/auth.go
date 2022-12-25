@@ -49,16 +49,7 @@ func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin
 
 			jwtToken, err := jwt.GenerateToken(jwtConfig, tokenData.AccessToken, user.Id, tokenData.ExpiresIn)
 
-			http.SetCookie(c.Writer, &http.Cookie{
-				Name:     jwt.PrincipalCookie,
-				Value:    url.QueryEscape(jwtToken),
-				MaxAge:   tokenData.ExpiresIn,
-				Domain:   "demo-discord-dashboard",
-				Path:     "/",
-				SameSite: http.SameSiteNoneMode,
-				HttpOnly: false,
-				Secure:   true,
-			})
+			jwt.SetSession(c, jwtToken, tokenData.ExpiresIn)
 		}
 
 		c.Redirect(http.StatusFound, auth.ClientUrl)
