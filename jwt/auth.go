@@ -75,7 +75,7 @@ func SetSession(c *gin.Context, token string, maxAge int) {
 		MaxAge:   maxAge,
 		Path:     "/",
 		SameSite: http.SameSiteNoneMode,
-		HttpOnly: false,
+		HttpOnly: true,
 		Secure:   true,
 	})
 }
@@ -87,7 +87,7 @@ func InvalidateSession(c *gin.Context) {
 		MaxAge:   0,
 		SameSite: http.SameSiteNoneMode,
 		Path:     "/",
-		HttpOnly: false,
+		HttpOnly: true,
 		Secure:   true,
 	})
 }
