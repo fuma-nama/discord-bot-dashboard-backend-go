@@ -53,7 +53,7 @@ func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin
 				Name:     jwt.PrincipalCookie,
 				Value:    url.QueryEscape(jwtToken),
 				MaxAge:   tokenData.ExpiresIn,
-				Domain:   "sonmoosans-discord-bot-dashboard.up.railway.app",
+				Domain:   "demo-discord-dashboard",
 				Path:     "/",
 				SameSite: http.SameSiteNoneMode,
 				HttpOnly: false,

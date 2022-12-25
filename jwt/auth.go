@@ -73,6 +73,7 @@ func InvalidateSession(c *gin.Context) {
 		Value:    "",
 		Path:     "/",
 		MaxAge:   0,
+		Domain:   "demo-discord-dashboard",
 		SameSite: http.SameSiteNoneMode,
 		HttpOnly: false,
 		Secure:   true,
