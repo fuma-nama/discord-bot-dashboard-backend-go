@@ -50,7 +50,7 @@ func AuthController(jwtConfig jwt.Config, auth discord.OAuth2Config, router *gin
 			jwtToken, err := jwt.GenerateToken(jwtConfig, tokenData.AccessToken, user.Id, tokenData.ExpiresIn)
 
 			jwt.SetSession(c, jwtToken, tokenData.ExpiresIn)
-			c.Redirect(http.StatusFound, auth.ClientUrl+"?token="+url.QueryEscape(jwtToken))
+			c.Redirect(http.StatusFound, auth.ClientUrl+"/#token="+url.QueryEscape(jwtToken))
 		} else {
 			c.Redirect(http.StatusFound, auth.ClientUrl)
 		}
