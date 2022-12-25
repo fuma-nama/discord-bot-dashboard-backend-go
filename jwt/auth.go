@@ -69,9 +69,12 @@ func AuthMiddleware(config Config) gin.HandlerFunc {
 
 func InvalidateSession(c *gin.Context) {
 	http.SetCookie(c.Writer, &http.Cookie{
-		Name:   PrincipalCookie,
-		Value:  "",
-		Path:   "/",
-		MaxAge: 0,
+		Name:     PrincipalCookie,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   0,
+		SameSite: http.SameSiteNoneMode,
+		HttpOnly: false,
+		Secure:   true,
 	})
 }
