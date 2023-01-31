@@ -13,6 +13,14 @@ import (
 	"strings"
 )
 
+func getEnvNullable(key string) *string {
+	if value, ok := os.LookupEnv(key); ok {
+		return &value
+	}
+
+	return nil
+}
+
 func main() {
 	jwtConfig := jwt.Config{
 		Secret: os.Getenv("JWT_SECRET"),
@@ -26,6 +34,7 @@ func main() {
 		User:     os.Getenv("PGUSER"),
 		Password: os.Getenv("PGPASSWORD"),
 		Port:     os.Getenv("PGPORT"),
+		Dsn:      getEnvNullable("DSN"),
 	}
 	authConfig := discord.OAuth2Config{
 		ClientId:     os.Getenv("CLIENT_ID"),
