@@ -15,7 +15,7 @@ type Config struct {
 }
 
 func Start(config Config) *gorm.DB {
-	dsn := "host=" + config.Host + " user=" + config.User + " password=" + config.Password + " dbname=" + config.Name + " port=" + config.Port
+	dsn := "host=" + config.Host + " user=" + config.User + " password=" + config.Password + " dbname=" + config.Name + " port=" + config.Port + " sslmode=require"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
