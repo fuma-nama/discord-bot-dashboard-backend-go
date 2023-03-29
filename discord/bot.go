@@ -10,15 +10,11 @@ type BotConfig struct {
 	Token string
 }
 
-func NewBot(config BotConfig, db *gorm.DB) *discordgo.Session {
+func NewBot(config BotConfig, _ *gorm.DB) *discordgo.Session {
 	discord, err := discordgo.New("Bot " + config.Token)
 	if err != nil {
 		panic(err.Error())
 	}
-
-	discord.AddHandler(GuildMemberAdd(db))
-
-	discord.Identify.Intents = discordgo.IntentsGuildMembers
 
 	if err := discord.Open(); err != nil {
 		panic(err.Error())
@@ -27,6 +23,9 @@ func NewBot(config BotConfig, db *gorm.DB) *discordgo.Session {
 	return discord
 }
 
+// GuildMemberAdd
+// Example event handler, notice that this needs the GuildMembers Intent to be enabled
+// **
 func GuildMemberAdd(db *gorm.DB) func(s *discordgo.Session, event *discordgo.GuildMemberAdd) {
 	return func(s *discordgo.Session, event *discordgo.GuildMemberAdd) {
 		var result models.Guild
