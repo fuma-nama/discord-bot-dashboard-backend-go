@@ -1,7 +1,8 @@
 package controllers
 
 import (
-	"discord-bot-dashboard-backend-go/jwt"
+	"discord-bot-dashboard-backend-go/discord"
+	"discord-bot-dashboard-backend-go/middlewares"
 	"discord-bot-dashboard-backend-go/models"
 	"errors"
 	"github.com/bwmarrin/discordgo"
@@ -193,8 +194,15 @@ func guildAndCheck(bot *discordgo.Session, c *gin.Context) (id *discordgo.Guild,
 		return
 	}
 
-	principal := jwt.Principal(c)
-	member, err := bot.GuildMember(*guild, principal.UserID)
+	token := middlewares.GetToken(c)
+
+	user, err := discord.GetUser(token)
+	if err != nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return nil, err
+	}
+
+	member, err := bot.GuildMember(*guild, user.Id)
 	if err != nil {
 		c.AbortWithStatus(http.StatusNotFound)
 		return

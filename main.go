@@ -4,7 +4,7 @@ import (
 	"discord-bot-dashboard-backend-go/controllers"
 	"discord-bot-dashboard-backend-go/database"
 	"discord-bot-dashboard-backend-go/discord"
-	"discord-bot-dashboard-backend-go/jwt"
+	"discord-bot-dashboard-backend-go/middlewares"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -13,35 +13,12 @@ import (
 	"strings"
 )
 
-func getEnvNullable(key string) *string {
-	if value, ok := os.LookupEnv(key); ok {
-		return &value
-	}
-
-	return nil
-}
-
 func main() {
-	jwtConfig := jwt.Config{
-		Secret: os.Getenv("JWT_SECRET"),
-	}
 	botConfig := discord.BotConfig{
 		Token: os.Getenv("BOT_TOKEN"),
 	}
 	dbConfig := database.Config{
-		Host:     os.Getenv("PGHOST"),
-		Name:     os.Getenv("PGDATABASE"),
-		User:     os.Getenv("PGUSER"),
-		Password: os.Getenv("PGPASSWORD"),
-		Port:     os.Getenv("PGPORT"),
-		Dsn:      getEnvNullable("DSN"),
-	}
-	authConfig := discord.OAuth2Config{
-		ClientId:     os.Getenv("CLIENT_ID"),
-		ClientSecret: os.Getenv("CLIENT_SECRET"),
-		RedirectUrl:  os.Getenv("API_ENDPOINT") + "/callback",
-		ClientUrl:    os.Getenv("REDIRECT_URL"),
-		Scope:        "identify guilds",
+		Dsn: os.Getenv("DSN"),
 	}
 	corsConfig := cors.Config{
 		AllowOrigins:     []string{os.Getenv("CLIENT_URL")},
@@ -67,14 +44,19 @@ func main() {
 		})
 	})
 
-	controllers.AuthController(jwtConfig, authConfig, &router.RouterGroup)
 	auth := router.Group("")
 	{
-		auth.Use(jwt.AuthMiddleware(jwtConfig))
+		auth.Use(middlewares.AuthMiddleware())
 		controllers.GuildController(auth, bot, db)
 	}
 
-	if router.Run(":8080") != nil {
+	port, ok := os.LookupEnv("PORT")
+
+	if !ok {
+		port = "8080"
+	}
+
+	if router.Run(":"+port) != nil {
 		return
 	}
 }
